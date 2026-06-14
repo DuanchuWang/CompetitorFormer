@@ -2,10 +2,10 @@ from setuptools import setup
 
 if __name__ == '__main__':
     setup(
-        name='dcd',
+        name='competitorformer',
         version='1.0',
-        description="Enhancing 3D Instance Segmentation with Dense Connection Decoder and Layer Aware Fusion (RAL2025)",
+        description="CompetitorFormer: Mitigating Query Conflicts for 3D Instance Segmentation via Competitive Strategy (CVPR2026)",
         author='Duanchu Wang',
         author_email='wangduanchu@stu.xidian.edu.cn',
-        packages=['dcd'],
+        packages=['competitorformer'],
     )

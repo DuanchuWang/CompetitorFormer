@@ -1,11 +1,14 @@
 #!/bin/bash
-echo Copy data
-python split_data.py
-echo Preprocess data
-python prepare_data_inst.py --data_split train
-python prepare_data_inst.py --data_split val
-python prepare_data_inst.py --data_split test
-python prepare_data_inst_with_normal.py --data_split train
-python prepare_data_inst_with_normal.py --data_split val
-python prepare_data_inst_with_normal.py --data_split test
-python prepare_data_inst_gttxt.py
+echo Prepare shared superpoints
+python3 prepare_superpoint.py \
+  --dataset_root /data/yangjunjie/scannetv2/scans \
+  --dataset_root_test /data/yangjunjie/scannetv2/scans_test \
+  --output_root /data/yangjunjie/scannetv2_spformer/superpoints \
+  --train_val_splits_path ./
+
+echo Preprocess scannetv2 data
+python3 preprocess_scannetv2.py \
+  --dataset_root /data/yangjunjie/scannetv2/scans \
+  --dataset_root_test /data/yangjunjie/scannetv2/scans_test \
+  --output_root /data/yangjunjie/scannetv2_spformer \
+  --train_val_splits_path ./

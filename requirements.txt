@@ -9,3 +9,4 @@ tensorboardX
 tqdm
 yapf
 trimesh
+timm

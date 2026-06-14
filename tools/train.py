@@ -9,14 +9,14 @@ import torch
 from tensorboardX import SummaryWriter
 from tqdm import tqdm
 
-from dcd.dataset import build_dataloader, build_dataset
-from dcd.evaluation import ScanNetEval
-from dcd.utils import AverageMeter, get_root_logger
+from competitorformer.dataset import build_dataloader, build_dataset
+from competitorformer.evaluation import ScanNetEval
+from competitorformer.utils import AverageMeter, get_root_logger
 import numpy as np
 
 
 def get_args():
-    parser = argparse.ArgumentParser('SPFormer')
+    parser = argparse.ArgumentParser('CompetitorFormer')
     parser.add_argument('config', type=str, help='path to config file')
     parser.add_argument('--resume', type=str, help='path to resume from')
     parser.add_argument('--work_dir', type=str, help='working directory')
@@ -97,21 +97,18 @@ def eval(epoch, model, dataloader, cfg, logger, writer):
     val_dataset = dataloader.dataset
 
     model.eval()
-    total_time = 0
     for batch in dataloader:
         # batch.pop("batch_points_offsets", "")
 
         result = model(batch, mode='predict')
-        total_time += result['time']
         pred_insts.append(result['pred_instances'])
         gt_insts.append(result['gt_instances'])
         progress_bar.update()
-
     progress_bar.close()
-    print(f'Total time: {total_time/len(dataloader)}')
+    
     # evaluate
     logger.info('Evaluate instance segmentation')
-    scannet_eval = ScanNetEval(val_dataset.CLASSES)
+    scannet_eval = ScanNetEval(val_dataset.CLASSES, compute_rc=cfg.compute_rc, logger=logger)
     try:
         eval_res = scannet_eval.evaluate(pred_insts, gt_insts)
         writer.add_scalar('val/AP', eval_res['all_ap'], epoch)
@@ -125,9 +122,9 @@ def eval(epoch, model, dataloader, cfg, logger, writer):
     return eval_res
 
 def get_model(cfg, model_name):
-    if model_name == 'DCD':
-        from dcd.model import DCD
-        model = DCD(**cfg.model).cuda()
+    if model_name == 'CompetitorFormer':
+        from competitorformer.model import CompetitorFormer
+        model = CompetitorFormer(**cfg.model).cuda()
     else:
         raise NotImplementedError()
     return model
@@ -139,6 +136,8 @@ def main():
         cfg.work_dir = args.work_dir
     else:
         cfg.work_dir = osp.join('./exps', osp.splitext(osp.basename(args.config))[0])
+    if not hasattr(cfg, 'compute_rc'):
+        cfg.compute_rc = True
     os.makedirs(osp.abspath(cfg.work_dir), exist_ok=True)
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
     log_file = osp.join(cfg.work_dir, f'{timestamp}.log')
@@ -153,11 +152,11 @@ def main():
     logger.info(cfg)
 
     # model
-    model_name = cfg.model.pop("name", "DCD")
+    model_name = cfg.model.pop("name", "CompetitorFormer")
     model = get_model(cfg, model_name)
     cfg.model_name = model_name
 
-    logger.info(model)
+    # logger.info(model)
 
     count_parameters = gorilla.parameter_count(model)['']
     logger.info(f'Parameters: {count_parameters / 1e6:.2f}M')
@@ -168,13 +167,13 @@ def main():
 
     # pretrain or resume
     start_epoch = 1
-    # if args.resume:
-    #     logger.info(f'Resume from {args.resume}')
-    #     meta = gorilla.resume(model, args.resume, optimizer, lr_scheduler)
-    #     start_epoch = meta['epoch']
-    # elif cfg.train.pretrain:
-    #     logger.info(f'Load pretrain from {cfg.train.pretrain}')
-    #     gorilla.load_checkpoint(model, cfg.train.pretrain, strict=False)
+    if args.resume:
+        logger.info(f'Resume from {args.resume}')
+        meta = gorilla.resume(model, args.resume, optimizer, lr_scheduler)
+        start_epoch = meta['epoch']
+    elif cfg.train.pretrain:
+        logger.info(f'Load pretrain from {cfg.train.pretrain}')
+        gorilla.load_checkpoint(model, cfg.train.pretrain, strict=False)
         
     # train and val dataset
     train_dataset = build_dataset(cfg.data.train, logger)

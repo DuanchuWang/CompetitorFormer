@@ -4,13 +4,13 @@ import torch
 from tqdm import tqdm
 import os
 
-from dcd.dataset import build_dataloader, build_dataset
-from dcd.evaluation import ScanNetEval
-from dcd.utils import get_root_logger, save_gt_instances, save_pred_instances
+from competitorformer.dataset import build_dataloader, build_dataset
+from competitorformer.evaluation import ScanNetEval
+from competitorformer.utils import get_root_logger, save_gt_instances, save_pred_instances
 from tools.train import get_model
 
 def get_args():
-    parser = argparse.ArgumentParser('SoftGroup')
+    parser = argparse.ArgumentParser('CompetitorFormer')
     parser.add_argument('config', type=str, help='path to config file')
     parser.add_argument('checkpoint', type=str, help='path to checkpoint')
     parser.add_argument('--out', type=str, help='directory for output results')
@@ -25,7 +25,7 @@ def main():
     logger = get_root_logger()
 
     # model = SPFormer(**cfg.model).cuda()
-    model_name = cfg.model.pop("name", "SPFormer")
+    model_name = cfg.model.pop("name", "CompetitorFormer")
     model = get_model(cfg, model_name)
     cfg.model_name = model_name
 
@@ -77,7 +77,11 @@ def main():
 
     if not cfg.data.test.prefix == 'test':
         logger.info('Evaluate instance segmentation')
-        scannet_eval = ScanNetEval(dataset.CLASSES)
+        scannet_eval = ScanNetEval(
+            dataset.CLASSES,
+            compute_rc=getattr(cfg, 'compute_rc', True),
+            logger=logger,
+        )
         scannet_eval.evaluate(pred_insts, gt_insts)
 
     # save output
