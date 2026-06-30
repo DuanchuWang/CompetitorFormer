@@ -12,7 +12,7 @@ This repository is the official implementation of CompetitorFormer, a competitiv
 
 ## 📋 Table of Contents
 
-- [Environment Setup](#-environment-setup)
+- [Installation](#-installation)
 - [Data Preparation](#-data-preparation)
 - [Training](#-training)
 - [Evaluation](#-evaluation)
@@ -22,51 +22,34 @@ This repository is the official implementation of CompetitorFormer, a competitiv
 
 ---
 
-## 🛠 Environment Setup
+## 🛠️ Installation
 
-The code has been tested with **Python 3.8**, **PyTorch 1.13.1**, and **CUDA 11.7** on Ubuntu.
+### Requirements
 
-### 1. Create a conda environment
+- Python 3.8
+- PyTorch 1.13.1
+- CUDA 11.7
+- Ubuntu 22.04 LTS
+
+### Setup Environment
 
 ```bash
+# Create conda environment
 conda create -n competitorformer python=3.8
 conda activate competitorformer
-```
 
-### 2. Install PyTorch and torchvision
-
-Install PyTorch with CUDA 11.7 support:
-
-```bash
+# Install PyTorch and torchvision
 pip install torch==1.13.1+cu117 torchvision==0.14.1+cu117 torchaudio==0.13.1 \
     --extra-index-url https://download.pytorch.org/whl/cu117
-```
 
-### 3. Install spconv
-
-Install the sparse convolution library matching CUDA 11.7:
-
-```bash
+# Install spconv
 pip install spconv-cu117
-```
 
-### 4. Install torch-scatter
-
-Install `torch-scatter` compatible with PyTorch 1.13.0 + CUDA 11.7:
-
-```bash
+# Install torch-scatter
 pip install torch-scatter==2.1.0 -f https://data.pyg.org/whl/torch-1.13.0+cu117.html
-```
 
-### 5. Install Segmentator (custom CUDA/C++ ops)
-
-CompetitorFormer relies on the [Segmentator](https://github.com/Karbo123/segmentator) library for efficient point cloud operations. Build and install it from source:
-
-```bash
-# Clone the repository
+# Install segmentator (custom CUDA/C++ ops)
 git clone https://github.com/Karbo123/segmentator.git
-
-# Build the C++/CUDA extensions
 cd segmentator/csrc
 mkdir build && cd build
 
@@ -77,16 +60,9 @@ cmake .. \
     -DCMAKE_INSTALL_PREFIX=`python -c 'from distutils.sysconfig import get_python_lib; print(get_python_lib())'`
 
 make && make install
-
-# Return to the project root
 cd ../../..
-```
 
-### 6. Install other Python dependencies
-
-Install the remaining requirements and the CompetitorFormer package itself:
-
-```bash
+# Install CompetitorFormer and other dependencies
 pip install -r requirements.txt
 pip install -e .
 ```
