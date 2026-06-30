@@ -64,7 +64,7 @@ cd ../../..
 
 # Install CompetitorFormer and other dependencies
 pip install -r requirements.txt
-pip install -e .
+python3 setup.py develop
 ```
 
 > **Tip:** If you encounter errors when building `segmentator`, please double check that:
