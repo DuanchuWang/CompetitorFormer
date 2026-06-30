@@ -35,12 +35,11 @@ This repository is the official implementation of CompetitorFormer, a competitiv
 
 ```bash
 # Create conda environment
-conda create -n competitorformer python=3.8
+conda create -n competitorformer python=3.8 -y
 conda activate competitorformer
 
 # Install PyTorch and torchvision
-pip install torch==1.13.1+cu117 torchvision==0.14.1+cu117 torchaudio==0.13.1 \
-    --extra-index-url https://download.pytorch.org/whl/cu117
+pip install torch==1.13.1+cu117 torchvision==0.14.1+cu117 torchaudio==0.13.1 --extra-index-url https://download.pytorch.org/whl/cu117
 
 # Install spconv
 pip install spconv-cu117
@@ -64,6 +63,8 @@ cd ../../..
 
 # Install CompetitorFormer and other dependencies
 pip install -r requirements.txt
+
+# install CompetitorFormer
 python3 setup.py develop
 ```
 
@@ -75,7 +76,82 @@ python3 setup.py develop
 
 ## 📦 Data Preparation
 
-> TODO: Add instructions for preparing the ScanNet / ScanNet200 datasets, including expected directory layout under `data/`.
+### ScanNet v2
+
+(1) Download the ScanNet v2 dataset.
+
+(2) Put the data in the corresponding folders.
+
+- Copy the files `[scene_id]_vh_clean_2.ply`, `[scene_id]_vh_clean_2.labels.ply`, `[scene_id]_vh_clean_2.0.010000.segs.json` and `[scene_id].aggregation.json` into the `scannetv2/scans` (train/val scenes) and `scannetv2/scans_test` (test scenes) folders.
+- Put the file `scannetv2-labels.combined.tsv` in the `scannetv2/` folder.
+
+The dataset files are organized as follows.
+
+```
+CompetitorFormer
+├── data
+│   ├── scannetv2
+│   │   ├── scans                                    # train + val scenes
+│   │   │   ├── scene0000_00
+│   │   │   │   ├── scene0000_00_vh_clean_2.ply
+│   │   │   │   ├── scene0000_00_vh_clean_2.labels.ply
+│   │   │   │   ├── scene0000_00_vh_clean_2.0.010000.segs.json
+│   │   │   │   └── scene0000_00.aggregation.json
+│   │   │   ├── ...
+│   │   ├── scans_test                               # test scenes
+│   │   │   ├── scene0707_00
+│   │   │   │   └── scene0707_00_vh_clean_2.ply
+│   │   │   ├── ...
+│   │   ├── scannetv2-labels.combined.tsv
+│   │   ├── scannetv2_train.txt
+│   │   ├── scannetv2_val.txt
+│   │   ├── scannetv2_test.txt
+```
+
+(3) Generate shared superpoints and input files `[scene_id]_inst_nostuff.pth` for instance segmentation. The script `prepare_data.sh` runs both steps: it first computes shared superpoints with `segmentator`, then preprocesses every scene into `(coords, colors, normals, sem_labels, instance_labels)` and writes them into `train/`/`val/`/`test/`. Evaluation GT txt files for val scenes are also generated.
+
+```bash
+cd data/scannetv2
+
+# Edit the dataset / output paths in prepare_data.sh to match your machine first
+bash prepare_data.sh \
+  --dataset_root       /path/to/scannetv2/scans \
+  --dataset_root_test  /path/to/scannetv2/scans_test \
+  --output_root        /path/to/scannetv2_output
+```
+
+> Note: `prepare_superpoint.py` relies on the `segmentator` library built during [Installation](#-installation). Make sure it is installed before running this step.
+
+### ScanNet 200
+
+ScanNet 200 reuses the train/val scenes from `scannetv2/scans` and shares the test set and superpoints with ScanNet v2, so please prepare ScanNet v2 first.
+
+(1) Preprocess the 200-class train/val scenes:
+
+```bash
+cd data/scannet200
+
+# Edit the dataset / output paths in prepare_data.sh to match your machine first
+bash prepare_data.sh
+```
+
+This runs `preprocess_scannet200.py` to generate `{scene_id}_inst_nostuff.pth` (200 normalized class ids + instance ids) under `train/` and `val/`, then symlinks the shared `test/` and `superpoints/` from the ScanNet v2 output directory (`${SCNNETV2_OUTPUT}` inside the script).
+
+The preprocessed dataset files are organized as follows.
+
+```
+CompetitorFormer
+├── data
+│   ├── scannet200
+│   │   ├── train
+│   │   │   ├── scene0000_00_inst_nostuff.pth
+│   │   │   ├── ...
+│   │   ├── val
+│   │   │   ├── scene0000_00_inst_nostuff.pth
+│   │   │   ├── ...
+│   │   ├── test            -> symlink to scannetv2_output/test
+│   │   ├── superpoints     -> symlink to scannetv2_output/superpoints
+```
 
 ---
 
