@@ -1,6 +1,8 @@
 # CompetitorFormer
 
 > **CompetitorFormer: Mitigating Query Conflicts for 3D Instance Segmentation via Competitive Strategy (CVPR 2026)**
+>
+> Duanchu Wang, Junjie Yang, Haoran Gong, Jing Liu, Di Wang
 
 This repository is the official implementation of CompetitorFormer, a competitive-strategy-based transformer that mitigates query conflicts for 3D instance segmentation.
 
@@ -186,11 +188,12 @@ CompetitorFormer
 If you find this work useful, please consider citing:
 
 ```bibtex
-@inproceedings{wang2026competitorformer,
+@InProceedings{Wang_2026_CVPR,
   title     = {CompetitorFormer: Mitigating Query Conflicts for 3D Instance Segmentation via Competitive Strategy},
-  author    = {Wang, Duanchu},
+  author    = {Wang, Duanchu and Yang, Junjie and Gong, Haoran and Liu, Jing and Wang, Di},
   booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
-  year      = {2026}
+  pages     = {34724-34733},
+  year      = {2026},
 }
 ```
 
