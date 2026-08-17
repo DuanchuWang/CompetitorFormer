@@ -15,6 +15,13 @@ data/scannetv2/val
 data/scannetv2/val_gt
 data/scannetv2/test
 
+data/scannetpp/train
+data/scannetpp/val
+data/scannetpp/val_vtx
+data/scannetpp/test
+data/scannetpp/train_grid1mm_chunk6x6_stride3x3
+data/scannetpp/trainval
+
 exps
 results
 output

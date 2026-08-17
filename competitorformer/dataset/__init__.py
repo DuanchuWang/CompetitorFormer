@@ -3,8 +3,9 @@ from torch.utils.data.distributed import DistributedSampler
 
 from .scannetv2 import ScanNetDataset
 from .scannet200 import ScanNet200Dataset
+from .scannetpp import ScanNetPPDataset
 
-__all__ = ['ScanNetDataset', 'ScanNet200Dataset', 'build_dataset', 'build_dataloader']
+__all__ = ['ScanNetDataset', 'ScanNet200Dataset', 'ScanNetPPDataset', 'build_dataset', 'build_dataloader']
 
 
 def build_dataset(data_cfg, logger):
@@ -16,6 +17,8 @@ def build_dataset(data_cfg, logger):
         return ScanNetDataset(**_data_cfg)
     elif data_type == 'scannet200':
         return ScanNet200Dataset(**_data_cfg)
+    elif data_type == 'scannetpp':
+        return ScanNetPPDataset(**_data_cfg)
     else:
         raise ValueError(f'Unknown {data_type}')
 

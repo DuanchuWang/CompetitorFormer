@@ -207,34 +207,36 @@ class CompetitorFormer(nn.Module):
         mask_pred = ((mask_pred > 0)).float()   # [n_p, M]
         mask_scores = (mask_pred_sigmoid * mask_pred).sum(1) / (mask_pred.sum(1) + 1e-6)
         scores = scores * mask_scores
-        # get mask
-        mask_pred = mask_pred[:, superpoints].int()
 
-        # score_thr
+        # Filter on superpoints first; expanding to [n_p, N] int32 OOMs on large ScanNet++ scenes.
         score_mask = scores > self.test_cfg.score_thr
-        scores = scores[score_mask]  # (n_p,)
-        labels = labels[score_mask]  # (n_p,)
-        mask_pred = mask_pred[score_mask]  # (n_p, N)
+        scores = scores[score_mask]
+        labels = labels[score_mask]
+        mask_pred = mask_pred[score_mask]
 
-        # npoint thr
-        mask_pointnum = mask_pred.sum(1)
+        superpoints_cpu = superpoints.detach().cpu()
+        mask_pred = mask_pred.detach().cpu()
+        scores = scores.detach().cpu()
+        labels = labels.detach().cpu()
+        sp_counts = torch.bincount(superpoints_cpu, minlength=mask_pred.shape[1]).float()
+        mask_pointnum = mask_pred.float().matmul(sp_counts)
         npoint_mask = mask_pointnum > self.test_cfg.npoint_thr
-        scores = scores[npoint_mask]  # (n_p,)
-        labels = labels[npoint_mask]  # (n_p,)
-        mask_pred = mask_pred[npoint_mask]  # (n_p, N)
+        scores = scores[npoint_mask]
+        labels = labels[npoint_mask]
+        mask_pred = mask_pred[npoint_mask]
 
-        cls_pred = labels.cpu().numpy()
-        score_pred = scores.cpu().numpy()
-        mask_pred = mask_pred.cpu().numpy()
+        cls_pred = labels.numpy()
+        score_pred = scores.numpy()
+        superpoints_np = superpoints_cpu.numpy()
 
         pred_instances = []
         for i in range(cls_pred.shape[0]):
             pred = {}
             pred['scan_id'] = scan_ids[0]
             pred['label_id'] = cls_pred[i]
-            pred['conf'] = round(score_pred[i], 1)
-            # rle encode mask to save memory
-            pred['pred_mask'] = rle_encode(mask_pred[i])
+            pred['conf'] = round(float(score_pred[i]), 1)
+            point_mask = mask_pred[i].numpy()[superpoints_np].astype(np.uint8)
+            pred['pred_mask'] = rle_encode(point_mask)
             pred_instances.append(pred)
 
         gt_instances = insts[0].gt_instances

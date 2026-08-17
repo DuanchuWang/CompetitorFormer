@@ -21,7 +21,7 @@ def get_args():
     parser.add_argument('--resume', type=str, help='path to resume from')
     parser.add_argument('--work_dir', type=str, help='working directory')
     parser.add_argument('--skip_validate', action='store_true', help='skip validation')
-    parser.add_argument('--eval_only', action='store_true', help='skip validation')
+    parser.add_argument('--eval_only', action='store_true', help='run evaluation only')
     args = parser.parse_args()
     return args
 
@@ -143,7 +143,9 @@ def main():
     log_file = osp.join(cfg.work_dir, f'{timestamp}.log')
     logger = get_root_logger(log_file=log_file)
     logger.info(f'config: {args.config}')
-    shutil.copy(args.config, osp.join(cfg.work_dir, osp.basename(args.config)))
+    dst_cfg = osp.join(cfg.work_dir, osp.basename(args.config))
+    if osp.realpath(args.config) != osp.realpath(dst_cfg):
+        shutil.copy(args.config, dst_cfg)
     writer = SummaryWriter(cfg.work_dir)
 
     # seed
@@ -169,12 +171,21 @@ def main():
     start_epoch = 1
     if args.resume:
         logger.info(f'Resume from {args.resume}')
-        meta = gorilla.resume(model, args.resume, optimizer, lr_scheduler)
-        start_epoch = meta['epoch']
+        if args.eval_only:
+            gorilla.load_checkpoint(model, args.resume, strict=False)
+        else:
+            meta = gorilla.resume(model, args.resume, optimizer, lr_scheduler)
+            start_epoch = meta['epoch']
     elif cfg.train.pretrain:
         logger.info(f'Load pretrain from {cfg.train.pretrain}')
         gorilla.load_checkpoint(model, cfg.train.pretrain, strict=False)
-        
+
+    if args.eval_only:
+        val_dataset = build_dataset(cfg.data.val, logger)
+        val_loader = build_dataloader(val_dataset, **cfg.dataloader.val)
+        eval(0, model, val_loader, cfg, logger, writer)
+        return
+
     # train and val dataset
     train_dataset = build_dataset(cfg.data.train, logger)
 
@@ -187,9 +198,6 @@ def main():
     logger.info('Training')
     best_AP = 0.0
     save_file = None
-    if args.eval_only:
-        eval_res = eval(0, model, val_loader, cfg, logger, writer)
-        exit()
     for epoch in range(start_epoch, cfg.train.epochs + 1):
         train(epoch, model, train_loader, optimizer, lr_scheduler, cfg, logger, writer)
         if epoch < 416:

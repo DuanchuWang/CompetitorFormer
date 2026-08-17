@@ -15,11 +15,29 @@ from ..utils import Instances3D
 import pickle
 
 
+def load_npy_file(scene_dir, names):
+    for name in names:
+        path = osp.join(scene_dir, name)
+        if osp.exists(path):
+            return np.load(path)
+    return None
+
+
+def as_1d_label(arr):
+    if arr is None:
+        return None
+    if arr.ndim == 2:
+        arr = arr[:, 0]
+    return arr.astype(np.int64, copy=False)
+
+
 class ScanNetDataset(Dataset):
 
     CLASSES = ('cabinet', 'bed', 'chair', 'sofa', 'table', 'door', 'window', 'bookshelf', 'picture', 'counter', 'desk',
                'curtain', 'refrigerator', 'shower curtain', 'toilet', 'sink', 'bathtub', 'otherfurniture')
     NYU_ID = (3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 24, 28, 33, 34, 36, 39)
+    # ScanNet v2: wall/floor (ids 0,1) -> ignore, then shift remaining 18 thing classes.
+    inst_stuff_remap = True
 
     def __init__(self,
                  data_root,
@@ -117,17 +135,28 @@ class ScanNetDataset(Dataset):
 
     def get_filenames(self):
         if self.prefix == 'trainval':
-            filenames = glob.glob(osp.join(self.data_root, "train", '*' + self.suffix)) + \
-                glob.glob(osp.join(self.data_root, "val", '*' + self.suffix))
+            roots = [osp.join(self.data_root, 'train'), osp.join(self.data_root, 'val')]
         else:
-            filenames = glob.glob(osp.join(self.data_root, self.prefix, '*' + self.suffix))
-            
+            roots = [osp.join(self.data_root, self.prefix)]
+
+        filenames = []
+        for root in roots:
+            if self.suffix == '.npy':
+                filenames.extend(path for path in glob.glob(osp.join(root, '*')) if osp.isdir(path))
+            else:
+                filenames.extend(glob.glob(osp.join(root, '*' + self.suffix)))
+
         assert len(filenames) > 0, 'Empty dataset.'
         filenames = sorted(filenames)
         # filenames = filenames[:12]
         return filenames
 
     def load(self, filename):
+        if osp.isdir(filename):
+            return self._load_npy_scene(filename)
+        return self._load_pth_scene(filename)
+
+    def _load_pth_scene(self, filename):
         scan_id = osp.basename(filename).replace(self.suffix, "")
         spp_filename = osp.join(self.data_root, "superpoints", f"{scan_id}.pth")
         superpoint = torch.load(spp_filename)
@@ -143,6 +172,42 @@ class ScanNetDataset(Dataset):
 
         if not self.with_normals:
             normal = None
+
+        return xyz, rgb, superpoint, semantic_label, instance_label, normal
+
+    def _load_npy_scene(self, scene_dir):
+        xyz = np.load(osp.join(scene_dir, 'coord.npy'))
+        rgb = np.load(osp.join(scene_dir, 'color.npy'))
+        superpoint = load_npy_file(scene_dir, ('superpoint.npy',))
+        if superpoint is None:
+            raise FileNotFoundError(f'superpoint.npy not found in {scene_dir}')
+        superpoint = np.asarray(superpoint).reshape(-1)
+
+        rgb = rgb.astype(np.float32)
+        if rgb.max() > 1.5:
+            rgb = rgb / 127.5 - 1.0
+
+        if self.with_normals:
+            normal = load_npy_file(scene_dir, ('normal.npy',))
+            if normal is None:
+                print(f'Warning: Normal file not found for {scene_dir}')
+            else:
+                normal = normal.astype(np.float32)
+        else:
+            normal = None
+
+        if self.with_label:
+            semantic_label = as_1d_label(
+                load_npy_file(scene_dir, ('semantic_label.npy', 'segment20.npy', 'segment.npy')))
+            instance_label = as_1d_label(
+                load_npy_file(scene_dir, ('instance_label.npy', 'instance.npy')))
+            if semantic_label is None or instance_label is None:
+                print(f'Warning: Label files not found for {scene_dir}, using dummy labels')
+                semantic_label = np.zeros(xyz.shape[0], dtype=np.int64)
+                instance_label = np.full(xyz.shape[0], -1, dtype=np.int64)
+        else:
+            semantic_label = np.zeros(xyz.shape[0], dtype=np.int64)
+            instance_label = np.full(xyz.shape[0], -1, dtype=np.int64)
 
         return xyz, rgb, superpoint, semantic_label, instance_label, normal
 
@@ -379,13 +444,14 @@ class ScanNetDataset(Dataset):
             normal = torch.from_numpy(normal).float()
 
         if semantic_label is not None:
-            semantic_label = torch.from_numpy(semantic_label).long()
-            semantic_label = torch.where(semantic_label < 2, -100, semantic_label - 2)
+            semantic_label = torch.from_numpy(np.asarray(semantic_label)).long()
+            if self.inst_stuff_remap:
+                semantic_label = torch.where(semantic_label < 2, -100, semantic_label - 2)
         else:
             semantic_label = torch.ones(xyz.shape[0]).long() * (-100)
 
         if instance_label is not None:
-            instance_label = torch.from_numpy(instance_label).long()
+            instance_label = torch.from_numpy(np.asarray(instance_label)).long()
         else:
             instance_label = torch.zeros(xyz.shape[0]).long()
 
