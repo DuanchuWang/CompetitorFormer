@@ -155,6 +155,38 @@ CompetitorFormer
 │   │   ├── superpoints     -> symlink to scannetv2_output/superpoints
 ```
 
+### ScanNet++
+
+ScanNet++ instance segmentation uses **84 thing classes** (mapped from the official 100-class semantic labels). The loader type is `scannetpp` and does **not** apply the ScanNet v2 `label-2` remap.
+
+(1) Download the official ScanNet++ dataset from [ScanNet++](https://kaldir.vc.in.tum.de/scannetpp/) (meshes, segments, and metadata).
+
+(2) Use the official validation split `splits/nvs_sem_val.txt` (**50 scenes**). A copy is provided at `data/scannetpp/nvs_sem_val.txt`.
+
+(3) Preprocess each val scene into Pointcept / LaSSM-style per-scene `.npy` folders. From `mesh_aligned_0.05.ply` (+ `segments.json` / `segments_anno.json` for labels):
+
+- compute vertex **normals** from the mesh (`input_channel: 9` requires them)
+- compute **superpoints** with `segmentator` (same library as in [Installation](#-installation))
+- write the files below under `data/scannetpp/val_vtx/<scene_id>/`
+
+```
+CompetitorFormer
+├── data
+│   ├── scannetpp
+│   │   ├── nvs_sem_val.txt                          # official 50-scene val split
+│   │   ├── val_vtx                                  # processed val (needed for eval)
+│   │   │   ├── 09c1414f1b
+│   │   │   │   ├── coord.npy
+│   │   │   │   ├── color.npy                        # uint8 RGB; loader does rgb/127.5-1
+│   │   │   │   ├── normal.npy
+│   │   │   │   ├── superpoint.npy
+│   │   │   │   ├── segment.npy                      # semantic ids (or semantic_label.npy)
+│   │   │   │   └── instance.npy                     # instance ids (or instance_label.npy)
+│   │   │   ├── ...
+```
+
+The `scannetpp` loader globs scene directories under `data_root/prefix` (`data/scannetpp` + `val_vtx` in the default config). **`--eval_only` does not load the train set**, so `train_grid1mm_chunk6x6_stride3x3` is not required for validation.
+
 ---
 
 ## 🚀 Training
@@ -169,17 +201,54 @@ CompetitorFormer
 
 ## 📊 Evaluation
 
-> TODO: Add evaluation commands, e.g.
->
-> ```bash
-> python tools/test.py --config-file configs/scannet/competitorformer_scannet.yaml
-> ```
+### ScanNet++
+
+Prerequisites: conda env `competitorformer`, `PYTHONPATH` pointing at the repo root, and the processed `val_vtx` npy scenes above. No train set is needed.
+
+1. Download the official val checkpoint `epoch490_AP_0.3335_0.4725_0.5640.pth` (~281MB) and place it at `checkpoints/epoch490_AP_0.3335_0.4725_0.5640.pth`.
+
+   > **TODO:** replace with the HuggingFace or ModelScope URL, e.g. `https://huggingface.co/<org>/CompetitorFormer/resolve/main/epoch490_AP_0.3335_0.4725_0.5640.pth`
+
+2. Run eval-only (skips the train loader):
+
+```bash
+conda activate competitorformer
+export PYTHONPATH=$PWD:$PYTHONPATH
+
+python tools/train.py configs/scannetpp/competitorformer_scannetpp.yaml \
+  --work_dir exps/competitorformer_scannetpp \
+  --eval_only \
+  --resume checkpoints/epoch490_AP_0.3335_0.4725_0.5640.pth
+```
+
+Inference knobs in `configs/scannetpp/competitorformer_scannetpp.yaml` (do not reuse ScanNet v2 values):
+
+- `model.decoder.num_query`: **500** (ScanNet v2 uses 400)
+- `model.test_cfg.topk_insts`: **1300**
+- `model.num_class`: **84**
+- `data.val.prefix`: `val_vtx`
+
+`predict_by_feat` is OOM-safe on large PP scenes (filter on superpoints first). You can override `data_root` in the yaml if your processed npy live elsewhere; no machine-specific `/u01/...` paths are required.
 
 ---
 
 ## 🏆 Results & Models
 
-> TODO: Add benchmark results and pretrained model links.
+### ScanNet++ (official 50-scene val)
+
+Fair val checkpoint: `epoch490_AP_0.3335_0.4725_0.5640.pth` (`num_query=500`).
+
+| Source | AP | AP<sub>50</sub> | AP<sub>25</sub> | Notes |
+| --- | ---: | ---: | ---: | --- |
+| Checkpoint filename | 0.3335 | 0.4725 | 0.5640 | Saved during training |
+| Original training logs | 0.333 | 0.475 | 0.569 | Same weight, original val run |
+| Re-eval (this repo) | 0.339 | 0.485 | 0.581 | Official 50-scene `val_vtx` npy; superpoints recomputed |
+
+The small gap vs. the filename / original logs is expected when superpoints and preprocessing are regenerated.
+
+Trainval-only checkpoints (e.g. `epoch498_AP_0.6121_0.8173_0.8938.pth`) are **not** comparable to this val split and are not used as the official number.
+
+> **TODO:** HuggingFace / ModelScope download URL for `epoch490_AP_0.3335_0.4725_0.5640.pth`.
 
 ---
 
