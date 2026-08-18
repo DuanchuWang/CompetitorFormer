@@ -205,9 +205,21 @@ The `scannetpp` loader globs scene directories under `data_root/prefix` (`data/s
 
 Prerequisites: conda env `competitorformer`, `PYTHONPATH` pointing at the repo root, and the processed `val_vtx` npy scenes above. No train set is needed.
 
-1. Download the official val checkpoint `epoch490_AP_0.3335_0.4725_0.5640.pth` (~281MB) and place it at `checkpoints/epoch490_AP_0.3335_0.4725_0.5640.pth`.
+1. Download the official ScanNet++ fair val checkpoint (~281MB) and place it at `checkpoints/competitorformer_scannetpp.pth`.
 
-   > **TODO:** replace with the HuggingFace or ModelScope URL, e.g. `https://huggingface.co/<org>/CompetitorFormer/resolve/main/epoch490_AP_0.3335_0.4725_0.5640.pth`
+```bash
+mkdir -p checkpoints
+wget https://huggingface.co/WangDuanchu/CompetitorFormer/resolve/main/competitorformer_scannetpp.pth \
+  -O checkpoints/competitorformer_scannetpp.pth
+```
+
+or:
+
+```bash
+huggingface-cli download WangDuanchu/CompetitorFormer competitorformer_scannetpp.pth --local-dir checkpoints
+```
+
+The public file is renamed from the training save `epoch490_AP_0.3335_0.4725_0.5640.pth` (filename metrics 0.3335 / 0.4725 / 0.5640).
 
 2. Run eval-only (skips the train loader):
 
@@ -218,7 +230,7 @@ export PYTHONPATH=$PWD:$PYTHONPATH
 python tools/train.py configs/scannetpp/competitorformer_scannetpp.yaml \
   --work_dir exps/competitorformer_scannetpp \
   --eval_only \
-  --resume checkpoints/epoch490_AP_0.3335_0.4725_0.5640.pth
+  --resume checkpoints/competitorformer_scannetpp.pth
 ```
 
 Inference knobs in `configs/scannetpp/competitorformer_scannetpp.yaml` (do not reuse ScanNet v2 values):
@@ -236,7 +248,7 @@ Inference knobs in `configs/scannetpp/competitorformer_scannetpp.yaml` (do not r
 
 ### ScanNet++ (official 50-scene val)
 
-Fair val checkpoint: `epoch490_AP_0.3335_0.4725_0.5640.pth` (`num_query=500`).
+Fair val checkpoint: [`competitorformer_scannetpp.pth`](https://huggingface.co/WangDuanchu/CompetitorFormer/resolve/main/competitorformer_scannetpp.pth) (`num_query=500`; original training save `epoch490_AP_0.3335_0.4725_0.5640.pth`).
 
 | Source | AP | AP<sub>50</sub> | AP<sub>25</sub> | Notes |
 | --- | ---: | ---: | ---: | --- |
@@ -248,7 +260,7 @@ The small gap vs. the filename / original logs is expected when superpoints and 
 
 Trainval-only checkpoints (e.g. `epoch498_AP_0.6121_0.8173_0.8938.pth`) are **not** comparable to this val split and are not used as the official number.
 
-> **TODO:** HuggingFace / ModelScope download URL for `epoch490_AP_0.3335_0.4725_0.5640.pth`.
+Download: [https://huggingface.co/WangDuanchu/CompetitorFormer/resolve/main/competitorformer_scannetpp.pth](https://huggingface.co/WangDuanchu/CompetitorFormer/resolve/main/competitorformer_scannetpp.pth)
 
 ---
 
