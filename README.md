@@ -203,6 +203,8 @@ python tools/train.py --config-file configs/scannet/competitorformer_scannet.yam
 
 ### ScanNet++
 
+Standalone how-to (env, checkpoint, npy layout, expected AP): [docs/scannetpp_inference.md](docs/scannetpp_inference.md).
+
 Prerequisites: conda env `competitorformer`, `PYTHONPATH` pointing at the repo root, and the processed `val_vtx` npy scenes above. No train set is needed.
 
 1. Download the official ScanNet++ checkpoint (~281MB) and place it at `checkpoints/competitorformer_scannetpp.pth`.
