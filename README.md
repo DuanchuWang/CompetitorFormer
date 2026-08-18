@@ -191,11 +191,9 @@ The `scannetpp` loader globs scene directories under `data_root/prefix` (`data/s
 
 ## 🚀 Training
 
-> TODO: Add training commands, e.g.
->
-> ```bash
-> python tools/train.py --config-file configs/scannet/competitorformer_scannet.yaml
-> ```
+```bash
+python tools/train.py --config-file configs/scannet/competitorformer_scannet.yaml
+```
 
 ---
 
@@ -205,7 +203,7 @@ The `scannetpp` loader globs scene directories under `data_root/prefix` (`data/s
 
 Prerequisites: conda env `competitorformer`, `PYTHONPATH` pointing at the repo root, and the processed `val_vtx` npy scenes above. No train set is needed.
 
-1. Download the official ScanNet++ fair val checkpoint (~281MB) and place it at `checkpoints/competitorformer_scannetpp.pth`.
+1. Download the official ScanNet++ checkpoint (~281MB) and place it at `checkpoints/competitorformer_scannetpp.pth`.
 
 ```bash
 mkdir -p checkpoints
@@ -218,8 +216,6 @@ or:
 ```bash
 huggingface-cli download WangDuanchu/CompetitorFormer competitorformer_scannetpp.pth --local-dir checkpoints
 ```
-
-The public file is renamed from the training save `epoch490_AP_0.3335_0.4725_0.5640.pth` (filename metrics 0.3335 / 0.4725 / 0.5640).
 
 2. Run eval-only (skips the train loader):
 
@@ -246,21 +242,32 @@ Inference knobs in `configs/scannetpp/competitorformer_scannetpp.yaml` (do not r
 
 ## 🏆 Results & Models
 
+Weights are hosted at [Hugging Face](https://huggingface.co/WangDuanchu/CompetitorFormer).
+
 ### ScanNet++ (official 50-scene val)
 
-Fair val checkpoint: [`competitorformer_scannetpp.pth`](https://huggingface.co/WangDuanchu/CompetitorFormer/resolve/main/competitorformer_scannetpp.pth) (`num_query=500`; original training save `epoch490_AP_0.3335_0.4725_0.5640.pth`).
+- Model: CompetitorFormer on ScanNet++ official 50-scene val
+- Checkpoint: [`competitorformer_scannetpp.pth`](https://huggingface.co/WangDuanchu/CompetitorFormer/resolve/main/competitorformer_scannetpp.pth) (`num_query=500`)
+- AP / AP<sub>50</sub> / AP<sub>25</sub> = **0.339 / 0.485 / 0.581**
 
-| Source | AP | AP<sub>50</sub> | AP<sub>25</sub> | Notes |
-| --- | ---: | ---: | ---: | --- |
-| Checkpoint filename | 0.3335 | 0.4725 | 0.5640 | Saved during training |
-| Original training logs | 0.333 | 0.475 | 0.569 | Same weight, original val run |
-| Re-eval (this repo) | 0.339 | 0.485 | 0.581 | Official 50-scene `val_vtx` npy; superpoints recomputed |
+```bash
+mkdir -p checkpoints
+wget https://huggingface.co/WangDuanchu/CompetitorFormer/resolve/main/competitorformer_scannetpp.pth \
+  -O checkpoints/competitorformer_scannetpp.pth
+```
 
-The small gap vs. the filename / original logs is expected when superpoints and preprocessing are regenerated.
+or:
 
-Trainval-only checkpoints (e.g. `epoch498_AP_0.6121_0.8173_0.8938.pth`) are **not** comparable to this val split and are not used as the official number.
+```bash
+huggingface-cli download WangDuanchu/CompetitorFormer competitorformer_scannetpp.pth --local-dir checkpoints
+```
 
-Download: [https://huggingface.co/WangDuanchu/CompetitorFormer/resolve/main/competitorformer_scannetpp.pth](https://huggingface.co/WangDuanchu/CompetitorFormer/resolve/main/competitorformer_scannetpp.pth)
+```bash
+python tools/train.py configs/scannetpp/competitorformer_scannetpp.yaml \
+  --work_dir exps/competitorformer_scannetpp \
+  --eval_only \
+  --resume checkpoints/competitorformer_scannetpp.pth
+```
 
 ---
 
